@@ -121,22 +121,12 @@ RIGHT OUTPUT = pOutputBuffer[1]
 */
 bool __stdcall CSinglePoleFilter::processAudioFrame(float* pInputBuffer, float* pOutputBuffer, UINT uNumInputChannels, UINT uNumOutputChannels)
 {
-
-	// just do the difference equation: y(n) = a0x(n) + a1x(n-1) + a2x(n-2) - b1y(n-1) - b2y(n-2)
-	//float yn = m_f_a0*f_xn + m_f_a1*m_f_Xz_1 + m_f_a2*m_f_Xz_2 - m_f_b1*m_f_Yz_1 - m_f_b2*m_f_Yz_2;
-
-
 	// y(n) = a0x(n) - b1y(n-1)
 	
 	if (m_eFilterType == LPF)
 	{
-		// LPF 
-		// theta = 2 pi fc / fs
-		// y = 2 - cos(theta)
-		// b1 = sqrt(y*y-1) - y
-		// a0 = 1 + b1
-		float theta = 2.0 * M_PI * m_fCornerFreq / m_fSampFreq;
-		float y = 2.0 - cos(theta);
+		float theta_c = 2.0 * pi * m_fCornerFreq / (float) m_fSampFreq;
+		float y = 2.0 - cos(theta_c);
 		float b1 = sqrt(y * y - 1.0) - y;
 		float a0 = 1.0 + b1;
 
@@ -147,8 +137,7 @@ bool __stdcall CSinglePoleFilter::processAudioFrame(float* pInputBuffer, float* 
 		if (yn > 1) yn = 1;
 		pOutputBuffer[0] = yn;
 		m_f_Yz1[0] = yn;
-		//m_f_Yz1[0] = xn;
-		/*
+		
 		// Mono-In, Stereo-Out (AUX Effect)
 		if (uNumInputChannels == 1 && uNumOutputChannels == 2)
 			pOutputBuffer[1] = pOutputBuffer[0];
@@ -162,7 +151,7 @@ bool __stdcall CSinglePoleFilter::processAudioFrame(float* pInputBuffer, float* 
 			if (yn > 1) yn = 1;
 			pOutputBuffer[1] = yn;
 			m_f_Yz1[1] = yn;
-		}*/
+		}
 	}
 	else if (m_eFilterType == HPF)
 	{
