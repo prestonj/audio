@@ -28,7 +28,10 @@ int triAsInt()
 	{
 		accum -= triFreq;
 	}
-	float x = triAmp * ((accum*2 - triPeriod) / triPeriod);
+	//float x = triAmp * ((accum*2 - triPeriod) / triPeriod);
+
+	float xNrm = accum / triPeriod;
+	float y = -triAmp + (abs(0.5 - xNrm) * 2 * triAmp);
 	return halfAmp + (halfAmp * x);
 }
 

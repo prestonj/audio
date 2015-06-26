@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <math.h>
 #include "inc/hw_ints.h"
 #include "inc/hw_memmap.h"
 #include "inc/hw_timer.h"
@@ -38,6 +39,7 @@
 #include "driverlib/sysctl.h"
 #include "driverlib/timer.h"
 #include "driverlib/uart.h"
+
 
 
 //*****************************************************************************
@@ -81,7 +83,7 @@ int32_t g_nextSample = 0;
 int32_t g_output = LOWER_LIMIT;
 
 #define HANDLER_FREQ 78125
-float g_freq = 1000;
+float g_freq = 440; // pop every 3-4 secs == 145;
 float g_cycle = 0;
 
 // 78,125 hz freq
@@ -92,21 +94,18 @@ float g_triHalfPeriod = 0;
 float g_triPeriod = 0;
 float g_triInc = 0;
 float g_accum = 0;
-float g_amp = 0;
+float g_amp = 1.0;
 float g_halfAmp = 0;
-//y = abs((x++ % 6) - 3);
-
 float g_wavPeriod;
 
 void
 init()
 {
 	g_period = 1.0f / PWM_FREQ;
-	g_triPeriod = 1.0f / 440.0f;
+	g_triPeriod = 1.0f / g_freq;
 	g_triHalfPeriod = g_triPeriod / 2.0f;
 	g_accum = 0;
-	g_amp = 1024;
-	g_halfAmp = g_amp / 2.0f;
+	g_amp = 0.75;
 	g_wavPeriod = g_triPeriod;
 }
 
@@ -144,31 +143,25 @@ Timer1AIntHandler(void)
 	//HWREG(TIMER0_BASE + TIMER_O_TAMATCHR) = (g_output & 0x000003E0) - 1; // upper 5 bits (992)
 	//HWREG(TIMER0_BASE + TIMER_O_TBMATCHR) = ((g_output & 0x0000001F) << 5) - 1; // lower 5 bits (31)
 	 */
+
 	g_accum += g_period;
-	if (g_accum > g_wavPeriod)
+	if (g_accum >= g_wavPeriod)
 	{
 		g_accum -= g_wavPeriod;
 	}
-	// triangle
-	float cycle = g_accum / g_triPeriod;
+	float xNrm = g_accum / g_wavPeriod;
 
-	if (cycle <= 0.25f)
+	bool tri = false;
+	if (tri)
 	{
-		g_output = g_halfAmp + g_halfAmp * (cycle / 0.25f);
-	}
-	else if (cycle <= 0.5f)
-	{
-		g_output = g_amp - g_halfAmp * ((cycle - 0.25f) / 0.25f);
-	}
-	else if (cycle <= 0.75f)
-	{
-		g_output = g_halfAmp - g_halfAmp * ((cycle - 0.5f) / 0.25f);
+		float y = -g_amp + (fabs(0.5 - xNrm) * 2 * g_amp);
+		g_output = 1024 + (1024 * y);
 	}
 	else
 	{
-		g_output = g_halfAmp * ((cycle - 0.75f) / 0.25f);
+		float y = xNrm >= 0.5 ? 0 : 1;
+		g_output = 1024 + (1023*y);
 	}
-	//y = (g_amp / g_triHalfPeriod) * (g_triHalfPeriod - abs(g_accum % (2*g_triHalfPeriod) - g_triHalfPeriod) );
 
     ROM_PWMPulseWidthSet(PWM0_BASE, PWM_OUT_0, ((g_output & 0x0000001F) << 5));
     ROM_PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, (g_output & 0x000003E0));
