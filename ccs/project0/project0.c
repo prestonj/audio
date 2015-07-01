@@ -83,12 +83,19 @@ int32_t g_nextSample = 0;
 int32_t g_output = LOWER_LIMIT;
 
 #define HANDLER_FREQ 78125
-float g_freq = 440; // pop every 3-4 secs == 145;
+float g_freq = 1000; // pop every 3-4 secs == 145;
 float g_cycle = 0;
+
+#define TIMER_PERIOD 512
+#define PWM_PERIOD 256
+#define HALF_AMP 0x7FFF
+#define FULL_AMP 0xFFFF
 
 // 78,125 hz freq
 // 80 mhz / 2048 = 39,062.50 hz
-#define PWM_FREQ 39062.50f
+// 80 mhz / 1024 = 78,125 hz
+// 80 mhz / 512 = 156,250 hz
+#define PWM_FREQ 156250
 float g_period = 0;
 float g_triHalfPeriod = 0;
 float g_triPeriod = 0;
@@ -105,9 +112,10 @@ init()
 	g_triPeriod = 1.0f / g_freq;
 	g_triHalfPeriod = g_triPeriod / 2.0f;
 	g_accum = 0;
-	g_amp = 0.75;
+	g_amp = 1.0;
 	g_wavPeriod = g_triPeriod;
 }
+int g_accumInt = 0;
 
 void
 Timer1AIntHandler(void)
@@ -144,27 +152,48 @@ Timer1AIntHandler(void)
 	//HWREG(TIMER0_BASE + TIMER_O_TBMATCHR) = ((g_output & 0x0000001F) << 5) - 1; // lower 5 bits (31)
 	 */
 
+/*
+	++g_accumInt;
+	if (g_accumInt >= 1024)
+	{
+		g_accumInt = 0;
+	}
+
+	if (g_accumInt >= 512)
+	{
+		g_output = 0;
+	}
+	else
+	{
+		g_output = 0xFFFF;
+	}
+*/
+
+
 	g_accum += g_period;
 	if (g_accum >= g_wavPeriod)
 	{
-		g_accum -= g_wavPeriod;
+		//g_accum -= g_wavPeriod;
+		g_accum = 0;
 	}
 	float xNrm = g_accum / g_wavPeriod;
 
-	bool tri = false;
+	bool tri = true;
 	if (tri)
 	{
 		float y = -g_amp + (fabs(0.5 - xNrm) * 2 * g_amp);
-		g_output = 1024 + (1024 * y);
+		g_output = HALF_AMP + (HALF_AMP * y);
 	}
 	else
 	{
 		float y = xNrm >= 0.5 ? 0 : 1;
-		g_output = 1024 + (1023*y);
+		g_output = HALF_AMP + (HALF_AMP * y);
 	}
 
-    ROM_PWMPulseWidthSet(PWM0_BASE, PWM_OUT_0, ((g_output & 0x0000001F) << 5));
-    ROM_PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, (g_output & 0x000003E0));
+    //ROM_PWMPulseWidthSet(PWM0_BASE, PWM_OUT_0, ((g_output & 0x0000001F) << 5));
+    //ROM_PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, (g_output & 0x000003E0));
+	ROM_PWMPulseWidthSet(PWM0_BASE, PWM_OUT_0, ((g_output & 0x000000FF)));
+	ROM_PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, (g_output & 0x0000FF00) >> 8);
 }
 
 void
@@ -215,11 +244,9 @@ main(void)
 
     // pwm config
 	PWMGenConfigure(PWM0_BASE, PWM_GEN_0, PWM_GEN_MODE_UP_DOWN);
-    PWMGenPeriodSet(PWM0_BASE, PWM_GEN_0, 1024);
-    //PWMPulseWidthSet(PWM0_BASE, PWM_OUT_0, 0);
-    //PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, 1023);
+    PWMGenPeriodSet(PWM0_BASE, PWM_GEN_0, PWM_PERIOD);
     ROM_PWMPulseWidthSet(PWM0_BASE, PWM_OUT_0, 0);
-    ROM_PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, 1023);
+    ROM_PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, 0);
     PWMGenEnable(PWM0_BASE, PWM_GEN_0);
     PWMOutputState(PWM0_BASE, (PWM_OUT_0_BIT | PWM_OUT_1_BIT), true);
 
@@ -285,7 +312,7 @@ main(void)
     //
     // timer 1
     ROM_TimerConfigure(TIMER1_BASE, TIMER_CFG_A_PERIODIC);
-    ROM_TimerLoadSet(TIMER1_BASE, TIMER_A, 2048);
+    ROM_TimerLoadSet(TIMER1_BASE, TIMER_A, TIMER_PERIOD);
     ROM_TimerIntClear(TIMER1_BASE, TIMER_TIMA_TIMEOUT);
     ROM_IntEnable(INT_TIMER1A);
     ROM_TimerIntEnable(TIMER1_BASE, TIMER_TIMA_TIMEOUT);
@@ -294,12 +321,13 @@ main(void)
     //
     // Loop forever while the timers run.
     //
-    bool ascend = true;
-    int32_t wavFreq = 1000;
-    int32_t pwmFreq = 1024;
-    int32_t delay = (80000000 / (wavFreq * 2 * pwmFreq)) / 3;
+    //bool ascend = true;
+    //int32_t wavFreq = 1000;
+    //int32_t pwmFreq = 1024;
+    //int32_t delay = (80000000 / (wavFreq * 2 * pwmFreq)) / 3;
     //int32_t delay = (int32_t) ((80000000.0 / 3.0) / 8192.0);
-    int32_t output = 0;
+    //int32_t output = 0;
+
     while(1)
     {
     	/*
