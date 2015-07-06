@@ -26,9 +26,19 @@
 	</natures>
 	<linkedResources>
 		<link>
-			<name>uartstdio.c</name>
+			<name>drivers/buttons.c</name>
 			<type>1</type>
-			<locationURI>PARENT-5-PROJECT_LOC/ti/TivaWare_C_Series-2.1.1.71/utils/uartstdio.c</locationURI>
+			<locationURI>SW_ROOT/examples/boards/ek-tm4c123gxl/drivers/buttons.c</locationURI>
+		</link>
+		<link>
+			<name>utils/uartstdio.c</name>
+			<type>1</type>
+			<locationURI>SW_ROOT/utils/uartstdio.c</locationURI>
+		</link>
+		<link>
+			<name>utils/ustdlib.c</name>
+			<type>1</type>
+			<locationURI>SW_ROOT/utils/ustdlib.c</locationURI>
 		</link>
 	</linkedResources>
 	<variableList>
